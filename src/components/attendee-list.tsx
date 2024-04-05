@@ -7,21 +7,14 @@ import { Table } from './table/table'
 import { TableHeader } from './table/table-header'
 import { TableCell } from './table/table-cell'
 import { TableRow } from './table/table-row'
-import { ChangeEvent, useEffect, useState } from 'react'
-// import { attendees } from '../data/attendees'
+import { ChangeEvent, useEffect, useState, useRef } from 'react'
+import { attendeesMock } from '../data/attendeesMock'
 
 dayjs.extend(relativeTime).locale('pt-br')
 
-interface Attendee {
-  id: string,
-  name: string,
-  email: string,
-  createdAt: string,
-  checkedInAt: string | null
-}
-
 export function AttendeeList() {
-  const [search, setSearch] = useState(()=> {
+  const tableRef = useRef<HTMLTableSectionElement>(null);
+  const [search, setSearch] = useState(() => {
     const url = new URL(window.location.toString())
 
     if (url.searchParams.has('search')) {
@@ -30,7 +23,7 @@ export function AttendeeList() {
 
     return ''
   })
-  const [page, setPage] = useState(()=> {
+  const [page, setPage] = useState(() => {
     const url = new URL(window.location.toString())
 
     if (url.searchParams.has('page')) {
@@ -40,27 +33,32 @@ export function AttendeeList() {
     return 1
   })
 
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [total, setTotal] = useState(0)
-  const [attendees, setAttendees] = useState<Attendee[]>([])
+  const [attendees, setAttendees] = useState<{ id: number; name: string; email: string; createdAt: string; checkedInAt: string; }[]>([]);
 
   const totalPages = Math.ceil(total / 10)
 
   useEffect(() => {
-    const url = new URL('http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees')
+    const url = new URL(window.location.toString())
 
     url.searchParams.set('pageIndex', String(page - 1))
 
     if (search.length > 0) {
-      url.searchParams.set('query', search)
+      const attendeesFiltered = attendeesMock.filter((attendee) => attendee.name.toLowerCase().includes(search.toLowerCase()))
+      setAttendees(attendeesFiltered)
+      setTotal(attendeesFiltered.length)
+      return
     }
 
-    fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
-        setAttendees(data.attendees)
-        setTotal(data.total)
-      })
-  }, [page, search])
+    setAttendees(attendeesMock)
+    setTotal(attendeesMock.length)
+  }, [page, search, tableRef])
+
+  useEffect(() => {
+    const Elementcount = tableRef.current?.childNodes.length || 0
+    setItemsPerPage(Elementcount)
+  })
 
   function setCurrentPage(page: number) {
     const url = new URL(window.location.toString())
@@ -82,8 +80,6 @@ export function AttendeeList() {
   }
 
   function goToNextPage() {
-    // if (page === totalPages) return
-    // setPage(page + 1)
     setCurrentPage(page + 1)
   }
 
@@ -99,8 +95,6 @@ export function AttendeeList() {
   function goToLastPage() {
     setCurrentPage(totalPages)
   }
-
-
 
   return (
     <div className='flex flex-col gap-4'>
@@ -130,8 +124,8 @@ export function AttendeeList() {
             <TableHeader style={{ width: 64 }} className="py-3 px-4 text-sm font-semibold text-left"></TableHeader>
           </tr>
         </thead>
-        <tbody>
-          {attendees.map((attendee) => (
+        <tbody ref={tableRef}>
+          {attendees.slice((page - 1) * 10, page * 10).map((attendee) => (
             <TableRow key={attendee.id}>
               <TableCell>
                 <input type="checkbox" className='size-4 bg-black/20 rounded border border-white/10' />
@@ -146,7 +140,7 @@ export function AttendeeList() {
               <TableCell>{dayjs().to(attendee.createdAt)}</TableCell>
               <TableCell>
                 {attendee.checkedInAt === null
-                  ? <span className='text-zinc-400'>Não fez check-in</span> 
+                  ? <span className='text-zinc-400'>Não fez check-in</span>
                   : dayjs().to(attendee.checkedInAt)}</TableCell>
               <TableCell>
                 <IconButton transparent>
@@ -159,7 +153,7 @@ export function AttendeeList() {
         <tfoot>
           <tr>
             <TableCell colSpan={3}>
-              Mostrando {attendees.length} de {total} itens
+              Mostrando {itemsPerPage} de {total} itens
             </TableCell>
             <TableCell colSpan={3} className="text-right">
               <div className='inline-flex items-center gap-8'>
