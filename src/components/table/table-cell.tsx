@@ -1,7 +1,7 @@
 import { ComponentProps } from "react"
 import { twMerge } from "tailwind-merge"
 
-interface TabletCellProps extends ComponentProps<'th'> {}
+interface TabletCellProps extends ComponentProps<'td'> {}
 
 export function TableCell(props: TabletCellProps) {
     return (
